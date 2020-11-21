@@ -1,4 +1,4 @@
-CLASS zss_consume_rest DEFINITION PUBLIC FINAL CREATE PUBLIC.
+CLASS zss_tester_2 DEFINITION PUBLIC FINAL CREATE PUBLIC.
   PUBLIC SECTION.
     INTERFACES:
       if_oo_adt_classrun.
@@ -57,7 +57,9 @@ ENDCLASS.
 
 
 
-CLASS zss_consume_rest IMPLEMENTATION.
+CLASS ZSS_TESTER_2 IMPLEMENTATION.
+
+
   METHOD if_oo_adt_classrun~main.
     TRY.
         " Read
@@ -93,6 +95,34 @@ CLASS zss_consume_rest IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD delete_post.
+    DATA(url) = |{ base_url }/{ id }|.
+    DATA(client) = create_client( url ).
+    DATA(response) = client->execute( if_web_http_client=>delete ).
+
+    IF response->get_status(  )-code NE 200.
+      RAISE EXCEPTION TYPE cx_web_http_client_error.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD create_post.
+    " Convert input post to JSON
+    DATA(json_post) = xco_cp_json=>data->from_abap( post_without_id )->apply(
+      VALUE #( ( xco_cp_json=>transformation->underscore_to_camel_case ) ) )->to_string(  ).
+
+    " Send JSON of post to server and return the response
+    DATA(url) = |{ base_url }|.
+    DATA(client) = create_client( url ).
+    DATA(req) = client->get_http_request(  ).
+    req->set_text( json_post ).
+    req->set_header_field( i_name = content_type i_value = json_content ).
+
+    result = client->execute( if_web_http_client=>post )->get_text(  ).
+    client->close(  ).
+  ENDMETHOD.
+
+
   METHOD read_posts.
     " Get JSON of all posts
     DATA(url) = |{ base_url }|.
@@ -121,23 +151,6 @@ CLASS zss_consume_rest IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD create_post.
-    " Convert input post to JSON
-    DATA(json_post) = xco_cp_json=>data->from_abap( post_without_id )->apply(
-      VALUE #( ( xco_cp_json=>transformation->underscore_to_camel_case ) ) )->to_string(  ).
-
-    " Send JSON of post to server and return the response
-    DATA(url) = |{ base_url }|.
-    DATA(client) = create_client( url ).
-    DATA(req) = client->get_http_request(  ).
-    req->set_text( json_post ).
-    req->set_header_field( i_name = content_type i_value = json_content ).
-
-    result = client->execute( if_web_http_client=>post )->get_text(  ).
-    client->close(  ).
-  ENDMETHOD.
-
-
   METHOD update_post.
     " Convert input post to JSON
     DATA(json_post) = xco_cp_json=>data->from_abap( post )->apply(
@@ -152,16 +165,5 @@ CLASS zss_consume_rest IMPLEMENTATION.
 
     result = client->execute( if_web_http_client=>put )->get_text(  ).
     client->close(  ).
-  ENDMETHOD.
-
-
-  METHOD delete_post.
-    DATA(url) = |{ base_url }/{ id }|.
-    DATA(client) = create_client( url ).
-    DATA(response) = client->execute( if_web_http_client=>delete ).
-
-    IF response->get_status(  )-code NE 200.
-      RAISE EXCEPTION TYPE cx_web_http_client_error.
-    ENDIF.
   ENDMETHOD.
 ENDCLASS.
